@@ -1,5 +1,4 @@
-from flask import Flask, session, render_template, request
-import requests
+from flask import Flask, request
 import json
 from FlowrouteMessagingLib.Controllers.APIController import *
 from FlowrouteMessagingLib.Models import *
@@ -10,63 +9,89 @@ controller = APIController(username="AccessKey", password="SecretKey")
 app = Flask(__name__)
 app.debug = True
 
-global appointment
-global orig
+global EXAMPLE_APPOINTMENT
+global ORIGINATING_NUMBER
 
-appointment = {'name': 'John Smith', 'date': 'March 3rd, 2016', 'location': '1221 2nd Ave STE 300', 'contactNumber': '19515557918', 'status': 'unconfirmed'}
-orig = '18445555780'
+EXAMPLE_APPOINTMENT = {
+    'name': 'John Smith',
+    'date': 'March 3rd, 2016',
+    'location': '1221 2nd Ave STE 300',
+    'contactNumber': '19515557918',
+    'status': 'unconfirmed',
+}
+ORIGINATING_NUMBER = '18445555780'
+
 
 @app.route('/initiatereminder',  methods=['GET', 'POST'])
 def initiatereminder():
+    """
+    Sends the appropriate message to the appointment's 'contactNumber' given
+    the state of the appointment.
+    """
+    if EXAMPLE_APPOINTMENT['status'] == 'unconfirmed':
+        message_content = ("Hello {}, you have an appointment on {} at {}. "
+                           "Please reply 'YES' or 'NO' to indicate if you "
+                           "are able to make it to this appointment.").format(
+                               EXAMPLE_APPOINTMENT['name'],
+                               EXAMPLE_APPOINTMENT['date'],
+                               EXAMPLE_APPOINTMENT['location'])
+        dest = str(EXAMPLE_APPOINTMENT['contactNumber'])
 
-    if appointment['status'] == 'unconfirmed':
-        messageContent = ("Hello " + appointment['name'] + 
-            ", you have an appointment on " + appointment['date'] + 
-            " at " + ['appointmentlocation'] + 
-            "please reply 'YES' or 'NO' if you are able to make it to your appointment or not"
-            )
-        dest = str(appointment['contactNumber'])        
-
-        msg = Message(to=dest, from_=orig, content=messageContent)
+        msg = Message(
+            to=dest,
+            from_=ORIGINATING_NUMBER,
+            content=message_content)
         response = controller.create_message(msg)
-        appointment['status'] = 'pending_confirmation'
+        EXAMPLE_APPOINTMENT['status'] = 'pending_confirmation'
         return str(response)
-    elif appointment['status'] == 'pending_confirmation':        
-        return 'Appointment is pending confirmation'
-    elif appointment['status'] == 'confirmed':
-        return 'Appointment has been confirmed'
-    elif appointment['status'] == 'cancelled':
-        return 'Appointment has been cancelled'
+    elif EXAMPLE_APPOINTMENT['status'] == 'pending_confirmation':
+        return 'The appointment is pending confirmation'
+    elif EXAMPLE_APPOINTMENT['status'] == 'confirmed':
+        return 'The appointment has been confirmed'
+    elif EXAMPLE_APPOINTMENT['status'] == 'cancelled':
+        return 'The appointment has been cancelled'
+
 
 @app.route('/handleresponse',  methods=['GET', 'POST'])
 def handleresponse():
-
-    json_content = request.json
-    json_headers = request.headers
-    json_string = json.dumps(json_content, indent=4)
-    print request.json    
-
-    if str(request.json['from']) == appointment['contactNumber'] and 'YES' in str(request.json['message']).upper():
-        msg = Message(to=request.json['from'], from_=orig, content='Your appointment has been confirmed')
+    """
+    A callback for processing the user's responding text message. Sends
+    a confirmation message, or prompts the user for valid input.
+    """
+    if str(request.json['from']) == EXAMPLE_APPOINTMENT['contactNumber'] \
+            and 'YES' in str(request.json['message']).upper():
+        msg = Message(
+            to=request.json['from'],
+            from_=orig,
+            content='Your appointment has been confirmed')
         response = controller.create_message(msg)
         print response
-        appointment['status'] = 'confirmed'
-        return "Appointment status: " + appointment['status']
-    elif str(request.json['from']) == appointment['contactNumber'] and 'NO' in str(request.json['message']).upper():
-        msg = Message(to=request.json['from'], from_=orig, content='Your appointment has been cancelled. Please call 18444205780 to reschedule')
+        EXAMPLE_APPOINTMENT['status'] = 'confirmed'
+        return "Appointment status: " + EXAMPLE_APPOINTMENT['status']
+    elif str(request.json['from']) == EXAMPLE_APPOINTMENT['contactNumber'] \
+            and 'NO' in str(request.json['message']).upper():
+        msg = Message(
+            to=request.json['from'],
+            from_=orig,
+            content=("Your appointment has been cancelled. Please call {} to"
+                     "reschedule").format(ORIGINATING_NUMBER))
         response = controller.create_message(msg)
         print response
-        appointment['status'] = 'cancelled'
-        return "Appointment status: " + appointment['status']
+        EXAMPLE_APPOINTMENT['status'] = 'cancelled'
+        return "Appointment status: " + EXAMPLE_APPOINTMENT['status']
     else:
-        msg = Message(to=request.json['from'], from_=orig, content='Please respond with either "Yes" or "No"')
+        msg = Message(
+            to=request.json['from'],
+            from_=orig,
+            content='Please respond with either "Yes" or "No"')
         response = controller.create_message(msg)
         print response
-        return "Appointment status: " + appointment['status']
+        return "Appointment status: " + EXAMPLE_APPOINTMENT['status']
+
 
 @app.route('/')
 def index():
-    return "hello, I am a web server"
+    return "Hello, I am a web server!"
 
 if __name__ == '__main__':
     app.run(
