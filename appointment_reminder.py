@@ -59,20 +59,20 @@ def handleresponse():
     a confirmation message, or prompts the user for valid input.
     """
     if str(request.json['from']) == EXAMPLE_APPOINTMENT['contactNumber'] \
-            and 'YES' in str(request.json['message']).upper():
+            and 'YES' in str(request.json['body']).upper():
         msg = Message(
             to=request.json['from'],
-            from_=orig,
+            from_=ORIGINATING_NUMBER,
             content='Your appointment has been confirmed')
         response = controller.create_message(msg)
         print response
         EXAMPLE_APPOINTMENT['status'] = 'confirmed'
         return "Appointment status: " + EXAMPLE_APPOINTMENT['status']
     elif str(request.json['from']) == EXAMPLE_APPOINTMENT['contactNumber'] \
-            and 'NO' in str(request.json['message']).upper():
+            and 'NO' in str(request.json['body']).upper():
         msg = Message(
             to=request.json['from'],
-            from_=orig,
+            from_=ORIGINATING_NUMBER,
             content=("Your appointment has been cancelled. Please call {} to"
                      "reschedule").format(ORIGINATING_NUMBER))
         response = controller.create_message(msg)
@@ -82,7 +82,7 @@ def handleresponse():
     else:
         msg = Message(
             to=request.json['from'],
-            from_=orig,
+            from_=ORIGINATING_NUMBER,
             content='Please respond with either "Yes" or "No"')
         response = controller.create_message(msg)
         print response
